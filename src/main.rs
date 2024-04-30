@@ -130,8 +130,10 @@ async fn run_render_loop(adapter_on: &Arc<Mutex<bool>>, bluetooth_devices: &Arc<
                 
                 let mut devices_guard = current_devices.lock().unwrap();
                 if *adapter_on.lock().unwrap() {
-                    println!("Adapter is on");
+                    // println!("Adapter is on");
                     let connected_devices = block_on(adapter.connected_devices_with_services(&[Uuid::try_parse("0000180F-0000-1000-8000-00805f9b34fb").unwrap()])).unwrap();
+                    let connected_devices_with_any_services = block_on(adapter.connected_devices()).unwrap();
+
                     //
                     // TODO: move everything below to their own functions
                     //
@@ -141,7 +143,14 @@ async fn run_render_loop(adapter_on: &Arc<Mutex<bool>>, bluetooth_devices: &Arc<
                         flash_bluetooth_battery(&tray_battery_icons, &mut tray_icon_app, battery_index);
                     } else {
                         let mut devices: Vec<BluetoothDevice> = Vec::new();
-                        
+                        println!("Connected devices with any services: ");
+                        for any_device in &connected_devices_with_any_services {
+                            let services = block_on(any_device.discover_services()).unwrap();
+                            for service in services {
+                                println!("{service:?}");
+                            }
+                        }
+                        println!("Connected devices with battery service: ");
                         for device in &connected_devices {
                             let new_device_name = device.name().unwrap();
                             let mut new_device_battery_percent: Option<u8> = None;

@@ -5,12 +5,14 @@
 
 */
 pub mod util;
-use std::{sync::{Arc, Mutex}, thread::JoinHandle, time::{Duration, Instant}};
+use std::{process::Command, sync::{Arc, Mutex}, thread::JoinHandle, time::{Duration, Instant}};
 
 
 use bluest::{Adapter, AdapterEvent, Uuid};
 use futures::{executor::block_on, StreamExt};
 
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tao::{event::{Event, StartCause}, event_loop::{ControlFlow, EventLoopBuilder}};
 
 
@@ -22,6 +24,16 @@ use util::structs::{BluetoothDevices, DisplayDeviceInformation};
 use crate::util::{image::load_icons, structs::BluetoothDevice};
 
 const SHORT_TIMER: Duration = Duration::from_secs(2);
+#[derive(Serialize, Deserialize, Debug)]
+struct DeviceInfo {
+    device_name: String,
+    battery_info: u8
+}
+#[derive(Serialize, Deserialize, Debug)]
+
+struct BluetoothDevices2 {
+    device: Vec<DeviceInfo>
+}
 
 #[derive(Clone)]
 pub struct BluetoothInfo {
@@ -34,6 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bluetooth = BluetoothInfo { adapter_on: Arc::new(Mutex::new(false)), devices: Arc::new(Mutex::new(BluetoothDevices {devices: Some(Vec::new())})) };
     let bluetooth_is_on_render = bluetooth.adapter_on.clone();
     let bluetooth_is_on_checker = bluetooth.adapter_on.clone();
+    
     
     let bluetooth_thread_handle = run_bluetooth_loop(&bluetooth_is_on_checker).await;
     
@@ -78,19 +91,33 @@ async fn run_bluetooth_loop(adapter_on: &Arc<Mutex<bool>>) -> tokio::task::JoinH
     })
 }
 
+fn query_bluetooth_devices() -> Vec<DeviceInfo> {
+    let mut binding = Command::new("powershell.exe");
+    let cmd = binding
+            .args([
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "ByPass",
+                "-File",
+                "./scripts/script.ps1",
+            ]);
+    let v: Vec<DeviceInfo> = serde_json::from_str(&String::from_utf8_lossy(&cmd.output().unwrap().stdout)).unwrap();
+    return v;
+}
 
 async fn run_render_loop(adapter_on: &Arc<Mutex<bool>>, bluetooth_devices: &Arc<std::sync::Mutex<BluetoothDevices>>) {
     let adapter_on = adapter_on.clone();
+    
     let current_devices = bluetooth_devices.clone();
     let mut selected_device: Option<BluetoothDevice> = None;
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "\\icons\\");
     let event_loop = EventLoopBuilder::new().build();
     let adapter = Adapter::default().await.unwrap();
-
+    
     let mut battery_index: usize = 0;
     let tray_battery_icons = load_icons(std::path::Path::new(path));
     let mut tray_menu = Menu::new();
-
+    
     let quit_i = MenuItem::new("Quit", true, None);
     let menu_item = MenuItem::with_id(0, "Yep", true, None);
     tray_menu.append_items(&[
@@ -99,11 +126,12 @@ async fn run_render_loop(adapter_on: &Arc<Mutex<bool>>, bluetooth_devices: &Arc<
     ]);
 
     let mut tray_icon_app = None;
-
+    
     let menu_channel = MenuEvent::receiver();
     let tray_channel = TrayIconEvent::receiver();
     
     event_loop.run(move |event, _, control_flow| {
+        
         if let tao::event::Event::NewEvents(tao::event::StartCause::Init) = event {
             *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_secs(2));
             
@@ -125,15 +153,16 @@ async fn run_render_loop(adapter_on: &Arc<Mutex<bool>>, bluetooth_devices: &Arc<
             }
             
             Event::NewEvents(StartCause::ResumeTimeReached { .. }) => {
+
                 *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_secs(2));
                 
                 
                 let mut devices_guard = current_devices.lock().unwrap();
                 if *adapter_on.lock().unwrap() {
+                    
+                    let connected_devices: Vec<DeviceInfo> = query_bluetooth_devices();
+                    println!("{connected_devices:?}");
                     // println!("Adapter is on");
-                    let connected_devices = block_on(adapter.connected_devices_with_services(&[Uuid::try_parse("0000180F-0000-1000-8000-00805f9b34fb").unwrap()])).unwrap();
-                    let connected_devices_with_any_services = block_on(adapter.connected_devices()).unwrap();
-
                     //
                     // TODO: move everything below to their own functions
                     //
@@ -143,54 +172,20 @@ async fn run_render_loop(adapter_on: &Arc<Mutex<bool>>, bluetooth_devices: &Arc<
                         flash_bluetooth_battery(&tray_battery_icons, &mut tray_icon_app, battery_index);
                     } else {
                         let mut devices: Vec<BluetoothDevice> = Vec::new();
-                        println!("Connected devices with any services: ");
-                        for any_device in &connected_devices_with_any_services {
-                            let services = block_on(any_device.discover_services()).unwrap();
-                            for service in services {
-                                println!("{service:?}");
-                            }
-                        }
                         println!("Connected devices with battery service: ");
                         for device in &connected_devices {
-                            let new_device_name = device.name().unwrap();
+                            let new_device_name = &device.device_name;
                             let mut new_device_battery_percent: Option<u8> = None;
                             let mut new_device_icon: Option<Icon> = None;
-                            let yep = block_on(connected_devices.get(0).unwrap().services());
-                        
-                        match yep {
-                            Ok(yep1) => {
-                                let yep2 = block_on(yep1.get(0).unwrap().characteristics());
-                                match yep2 {
-                                    Ok(yep3) => {
-                                        let yep4 = block_on(yep3.get(0).unwrap().read());
-                                        match yep4 {
-                                            Ok(yep5) => {
-                                                let battery_level = yep5.get(0).unwrap();
-                                                new_device_battery_percent = Some(*battery_level);
-                                                battery_index = ((100 - battery_level) / 25) as usize;
-                                                let find_icon = tray_battery_icons.as_ref().unwrap().get(battery_index).unwrap().clone();
-                                                new_device_icon = Some(find_icon);
-                                                
-                                            }
-                                            Err(e) => {
-                                                println!("Battery error: {:?}", e);
-                                            }
-                                        }
-                                    }
-                                    Err(e) => {
-                                        println!("Characteristic error: {:?}", e);
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                println!("Service error: {:?}", e);
-
-                            }
-                        }
+                            let battery_level = device.battery_info;
+                            new_device_battery_percent = Some(battery_level);
+                            battery_index = ((100 - battery_level) / 25) as usize;
+                            let find_icon = tray_battery_icons.as_ref().unwrap().get(battery_index).unwrap().clone();
+                            new_device_icon = Some(find_icon);
+                            
                         if new_device_battery_percent.is_some() {
                             devices.push(BluetoothDevice {
-                                device: device.to_string(),
-                                device_info: DisplayDeviceInformation::new(new_device_name, new_device_battery_percent, new_device_icon, false)
+                                device_info: DisplayDeviceInformation::new(new_device_name.to_string(), new_device_battery_percent, new_device_icon, false)
                             })
                         }}
                         *devices_guard = BluetoothDevices { devices: Some(devices) };
@@ -215,7 +210,7 @@ async fn run_render_loop(adapter_on: &Arc<Mutex<bool>>, bluetooth_devices: &Arc<
                         updated_menu.prepend(&PredefinedMenuItem::separator());
                         for (index, device) in devices.iter().enumerate() {
 
-                            let mut menu_text = format!("{} - {}%", device.device_info.device_name(), device.device_info.battery_info().unwrap());
+                            let menu_text = format!("{} - {}%", device.device_info.device_name(), device.device_info.battery_info().unwrap());
                             //
                             // TODO: indicate to user which device is selected in menu
                             //
@@ -263,7 +258,7 @@ async fn run_render_loop(adapter_on: &Arc<Mutex<bool>>, bluetooth_devices: &Arc<
                 }
                 println!("Menu: {event:?}");
             }
-            Err(e) => {
+            Err(_e) => {
 
             }
         }

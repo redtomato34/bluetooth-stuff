@@ -13,7 +13,6 @@ impl BluetoothDevices {
 
 #[derive(Debug, Clone)]
 pub struct BluetoothDevice {
-    pub device: String,
     pub device_info: DisplayDeviceInformation
 }
 

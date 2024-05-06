@@ -3,17 +3,6 @@ name = "bluetooth-stuff"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-# winrt-notification = "0.5.1"
-bluest = "0.6.6"
 tokio = {version = "1.37.0", features = ["full"]}
-tao = "0.27.1"
-tray-icon = "0.13.4"
-image = "0.25"
-futures = "0.3.30"
-serde = "*"
-serde_json = "1.0"
-
-# once_cell = "*"
+windows = {version = "0.54", features = ["Foundation_Collections", "Devices_Bluetooth", "Devices_Bluetooth_Rfcomm"]}

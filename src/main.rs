@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     println!("Listening to input stream");
     let read_buffer = Buffer::Create(256).unwrap();
-    let something = socket.InputStream().unwrap().ReadAsync(&read_buffer, 16, InputStreamOptions::Partial).unwrap().await.unwrap();
+    let something = socket.InputStream().unwrap().ReadAsync(&read_buffer, 16, InputStreamOptions::ReadAhead).unwrap().await.unwrap();
 
     println!("Reading returned buffer");
     let reader = DataReader::FromBuffer(&something).unwrap();

@@ -5,4 +5,4 @@ edition = "2021"
 
 [dependencies]
 tokio = {version = "1.37.0", features = ["full"]}
-windows = {version = "0.54", features = ["Foundation_Collections", "Devices_Bluetooth", "Devices_Bluetooth_Rfcomm"]}
+windows = {version = "0.54", features = ["Foundation_Collections", "Devices_Bluetooth", "Devices_Bluetooth_Rfcomm", "Networking_Sockets", "Storage_Streams"]}

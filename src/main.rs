@@ -49,18 +49,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // socket.OutputStream().unwrap().WriteAsync(&write_buffer).unwrap().await.unwrap();
     
     println!("Listening to input stream");
-    let read_buffer = Buffer::Create(256).unwrap();
-    let something = socket.InputStream().unwrap().ReadAsync(&read_buffer, 16, InputStreamOptions::ReadAhead).unwrap().await.unwrap();
+    loop {
+        let read_buffer = Buffer::Create(256).unwrap();
+        let something = socket.InputStream().unwrap().ReadAsync(&read_buffer, 16, InputStreamOptions::Partial).unwrap().await.unwrap();
 
-    println!("Reading returned buffer");
-    let reader = DataReader::FromBuffer(&something).unwrap();
-    
-    while reader.UnconsumedBufferLength().unwrap() != 0 {
-        println!("Reading at: {}", reader.UnconsumedBufferLength().unwrap());
-        let stuff = reader.ReadString(reader.UnconsumedBufferLength().unwrap()).unwrap();
-        print!("- {}", stuff);
+        println!("Reading returned buffer");
+        let reader = DataReader::FromBuffer(&something).unwrap();
+        
+        while reader.UnconsumedBufferLength().unwrap() != 0 {
+            println!("Reading at: {}", reader.UnconsumedBufferLength().unwrap());
+            let stuff = reader.ReadString(reader.UnconsumedBufferLength().unwrap()).unwrap();
+            print!("- {}", stuff);
+        }
     }
-    println!("Done");
-    
     Ok(())
 }

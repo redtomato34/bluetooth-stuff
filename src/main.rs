@@ -39,16 +39,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     
     
-    println!("Creating write buffer for command");
-    let string_to_send = HSTRING::from("AT+CIND=?");
+    // println!("Creating write buffer for command");
+    // let string_to_send = HSTRING::from("AT+CIND=?");
     
-    let writer = DataWriter::new().unwrap();
-    println!("Sending command: {}", &string_to_send);
-    writer.WriteString(&string_to_send).unwrap();
-    let write_buffer = writer.DetachBuffer().unwrap();
-    socket.OutputStream().unwrap().WriteAsync(&write_buffer).unwrap().await.unwrap();
+    // let writer = DataWriter::new().unwrap();
+    // println!("Sending command: {}", &string_to_send);
+    // writer.WriteString(&string_to_send).unwrap();
+    // let write_buffer = writer.DetachBuffer().unwrap();
+    // socket.OutputStream().unwrap().WriteAsync(&write_buffer).unwrap().await.unwrap();
     
-    println!("Reading response stream");
+    println!("Listening to input stream");
     let read_buffer = Buffer::Create(256).unwrap();
     let something = socket.InputStream().unwrap().ReadAsync(&read_buffer, 16, InputStreamOptions::Partial).unwrap().await.unwrap();
 

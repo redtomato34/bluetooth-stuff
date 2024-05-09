@@ -15,10 +15,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let service = service.ServiceId().unwrap().Uuid().unwrap();
         println!("{service:?}");
     }
-    let hfp_service_check =  device.GetRfcommServicesAsync().unwrap().await.unwrap().Services().unwrap().GetAt(1).unwrap();
+    let hfp_service_check =  device.GetRfcommServicesAsync().unwrap().await.unwrap().Services().unwrap().GetAt(0).unwrap();
     println!("Service should start with: 111E");
     println!("{:?}", hfp_service_check.ServiceId().unwrap());
-    let service = device.GetRfcommServicesAsync().unwrap().await.unwrap().Services().unwrap().GetAt(1).unwrap();
+    let service = device.GetRfcommServicesAsync().unwrap().await.unwrap().Services().unwrap().GetAt(0).unwrap();
     
     let socket = StreamSocket::new().unwrap();
     socket.Control().unwrap().NoDelay().unwrap();

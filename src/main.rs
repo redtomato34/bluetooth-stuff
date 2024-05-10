@@ -39,28 +39,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     
     
-    // println!("Creating write buffer for command");
-    // let string_to_send = HSTRING::from("AT+CIND=?");
+    println!("Creating write buffer for command");
+    let string_to_send = HSTRING::from("AT+CGMI");
     
-    // let writer = DataWriter::new().unwrap();
-    // println!("Sending command: {}", &string_to_send);
-    // writer.WriteString(&string_to_send).unwrap();
-    // let write_buffer = writer.DetachBuffer().unwrap();
-    // socket.OutputStream().unwrap().WriteAsync(&write_buffer).unwrap().await.unwrap();
+    let writer = DataWriter::new().unwrap();
+    println!("Sending command: {}", &string_to_send);
+    writer.WriteString(&string_to_send).unwrap();
+    let write_buffer = writer.DetachBuffer().unwrap();
+    socket.OutputStream().unwrap().WriteAsync(&write_buffer).unwrap().await.unwrap();
     
     println!("Listening to input stream");
-    loop {
-        let read_buffer = Buffer::Create(256).unwrap();
-        let something = socket.InputStream().unwrap().ReadAsync(&read_buffer, 16, InputStreamOptions::Partial).unwrap().await.unwrap();
+    let read_buffer = Buffer::Create(256).unwrap();
+    let something = socket.InputStream().unwrap().ReadAsync(&read_buffer, 16, InputStreamOptions::Partial).unwrap().await.unwrap();
 
-        println!("Reading returned buffer");
-        let reader = DataReader::FromBuffer(&something).unwrap();
-        
-        while reader.UnconsumedBufferLength().unwrap() != 0 {
-            println!("Reading at: {}", reader.UnconsumedBufferLength().unwrap());
-            let stuff = reader.ReadString(reader.UnconsumedBufferLength().unwrap()).unwrap();
-            print!("- {}", stuff);
-        }
+    println!("Reading returned buffer");
+    let reader = DataReader::FromBuffer(&something).unwrap();
+    
+    while reader.UnconsumedBufferLength().unwrap() != 0 {
+        println!("Reading at: {}", reader.UnconsumedBufferLength().unwrap());
+        let stuff = reader.ReadString(reader.UnconsumedBufferLength().unwrap()).unwrap();
+        print!("- {}", stuff);
     }
     Ok(())
 }

@@ -69,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("iteration: {}", iteration);
         println!("Listening to input stream");
         let read_buffer = Buffer::Create(1024).unwrap();
-        let something = socket.InputStream().unwrap().ReadAsync(&read_buffer, 16, InputStreamOptions::None).unwrap().await.unwrap();
+        let something = socket.InputStream().unwrap().ReadAsync(&read_buffer, 16, InputStreamOptions::Partial).unwrap().await.unwrap();
         println!("Reading returned buffer");
         
         let read_result = read_input_buffer(something);

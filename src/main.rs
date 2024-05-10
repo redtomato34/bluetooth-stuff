@@ -111,7 +111,7 @@ async fn send_response(res: &str, socket: &StreamSocket, cmd_found: bool) {
     let cmd_write_buffer = create_write_command_buffer(res);
     socket.OutputStream().unwrap().WriteAsync(&cmd_write_buffer).unwrap().await.unwrap();
     if cmd_found {
-        let ok_response_buffer = create_write_command_buffer(res);
+        let ok_response_buffer = create_write_command_buffer("OK");
         socket.OutputStream().unwrap().WriteAsync(&ok_response_buffer).unwrap().await.unwrap();
     }
     println!("Response sent");

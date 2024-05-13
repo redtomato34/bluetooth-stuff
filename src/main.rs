@@ -98,7 +98,7 @@ async fn init_bluetooth_communication(socket: &StreamSocket) {
 }
 
 async fn send_response(res: &str, socket: &StreamSocket, send_extra_ok: bool) {
-    println!("- Writing: ");
+    println!("- Writing: {}", res);
     let cmd_write_buffer = create_write_command_buffer(res);
     socket.OutputStream().unwrap().WriteAsync(&cmd_write_buffer).unwrap().await.unwrap();
     if send_extra_ok {

@@ -58,32 +58,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let read_result = read_input_buffer(input_buffer);
         println!("Response: {}", read_result);
+        let mut found_handled_command: Option<usize> = None;
         for (index, command) in READ_COMMANDS.iter().enumerate() {
-            let found_handled_command = read_result.starts_with(command); // check handled commands
-            match found_handled_command {
-                true => {
-                    match index {
-                        // battery info
-                        5 => {
-                            println!("Should be battery info");
-                            println!("*****");
-                            println!("Battery percent: {}%", convert_to_battery_percentage(&read_result));
-                            println!("*****");
-                            send_response("OK", &socket, false).await;
-                        }
-                        // default response
-                        _ => {
-                            send_response(WRITE_COMMANDS[index], &socket, true).await;
-                        }
-                    }
-                }
-                // send OK for unhandled commands
-                false => {
-                    send_response("OK", &socket, false).await;
-                    break;
-                }
+            if read_result.starts_with(command) {
+                found_handled_command = Some(index);
             }
         }
+  
+        match found_handled_command {
+            Some(index) => {
+                match index {
+                    // battery info
+                    5 => {
+                        println!("Should be battery info");
+                        println!("*****");
+                        println!("Battery percent: {}%", convert_to_battery_percentage(&read_result));
+                        println!("*****");
+                        send_response("OK", &socket, false).await;
+                    }
+                    // default response
+                    _ => {
+                        send_response(WRITE_COMMANDS[index], &socket, true).await;
+                    }   
+                }
+            }
+            None => {
+                send_response("OK", &socket, false).await;
+            }
+            
+        }
+            
     }
     // Ok(())
 }

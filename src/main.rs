@@ -80,6 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // send OK for unhandled commands
                 false => {
                     send_response("OK", &socket, false).await;
+                    break;
                 }
             }
         }

@@ -39,6 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     // https://inthehand.com/2022/12/30/12-days-of-bluetooth-10-hands-free/
     let write_commands = [
+        "BRSF:0",
         "AT+CIND?",
         "+CIND: (\"service\",(0,1)),(\"call\",(0,1))",
         "+CIND: 1,0",
@@ -69,13 +70,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("iteration: {}", iteration);
         println!("Listening to input stream");
         let read_buffer = Buffer::Create(1024).unwrap();
-        let something = socket.InputStream().unwrap().ReadAsync(&read_buffer, 16, InputStreamOptions::Partial).unwrap().await.unwrap();
+        let something = socket.InputStream().unwrap().ReadAsync(&read_buffer, 32, InputStreamOptions::Partial).unwrap().await.unwrap();
         println!("Reading returned buffer");
         
         let read_result = read_input_buffer(something);
         if read_result.starts_with(read_commands[0]) {
             println!("Found: {}", read_result);
-            send_response(&read_result, &socket, true).await;
+            send_response(write_commands[0], &socket, true).await;
             
         } else if read_result.starts_with(read_commands[1]) {
             println!("Found: {}", read_result);
@@ -96,6 +97,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         } else if read_result.starts_with(read_commands[5]) {
             println!("Should be battery info");
             println!("Found: {}", read_result);
+            println!("------");
+            println!("Battery percent: {}", convert_to_battery_percentage(&read_result));
+            println!("------");
             send_response("OK", &socket, false).await;
 
         } else {
@@ -130,4 +134,30 @@ fn read_input_buffer(buffer: IBuffer) -> String {
     let stuff = reader.ReadString(reader.UnconsumedBufferLength().unwrap()).unwrap();
     print!("Read: {}", stuff);
     stuff.to_string()
+}
+fn convert_to_battery_percentage(res: &str) -> String {
+    let mut result: u8 = 0;
+
+    let res_split: Vec<&str> = res.split("=").collect();
+    let bat_data: Vec<&str> = res_split.get(1).unwrap().split(",").collect();
+    for index in 0..bat_data.len() {
+        let index = index as u8;
+        let key = bat_data[(index * 2 + 1) as usize].parse::<u8>().unwrap();
+        let value = bat_data[(index * 2 + 2) as usize].parse::<u8>().unwrap();
+        if key == 1 {
+            println!("Converted");
+            result = (value + 1) * 10;
+            break;
+        }
+       
+    }
+    format!("{}%", result)
+}
+
+
+#[cfg(test)]
+mod tests {
+    // sending only OK until AT+IPHONEACCEV
+    // sending +XAPL=iPhone,2 first
+    // after OKing/responding, read in a loop until +CIEV or fail
 }

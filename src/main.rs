@@ -10,7 +10,7 @@ static WRITE_COMMANDS: [&str; 5] = [
     "+CIND: (\"service\",(0,1)),(\"call\",(0,1))",
     "+CIND: 1,0",
     "+CHLD: 0",
-    "+XAPL=iPhone,2"
+    "+XAPL=iPhone,6"
 ];
 
 static READ_COMMANDS: [&str; 6] = [

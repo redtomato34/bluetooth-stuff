@@ -13,14 +13,13 @@ static WRITE_COMMANDS: [&str; 5] = [
     "+XAPL=iPhone,2"
 ];
 
-static READ_COMMANDS: [&str; 7] = [
+static READ_COMMANDS: [&str; 6] = [
     "AT+BRSF",
     "AT+CIND=?",
     "AT+CIND?",
     "AT+CHLD=?",
     "AT+XAPL",
-    "AT+IPHONEACCEV",
-    "AT+CSRSF"
+    "AT+IPHONEACCEV"
 ];
 
 #[tokio::main]
@@ -83,9 +82,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     0 => {
                         send_response(&read_result, &socket, true).await;
-                    }
-                    6 => {
-                        last_command_sent = true;
                     }
                     // default response
                     _ => {

@@ -13,13 +13,14 @@ static WRITE_COMMANDS: [&str; 5] = [
     "+XAPL=iPhone,2"
 ];
 
-static READ_COMMANDS: [&str; 6] = [
+static READ_COMMANDS: [&str; 7] = [
     "AT+BRSF",
     "AT+CIND=?",
     "AT+CIND?",
     "AT+CHLD=?",
     "AT+XAPL",
-    "AT+IPHONEACCEV"
+    "AT+IPHONEACCEV",
+    "AT+CSRSF"
 ];
 
 #[tokio::main]
@@ -49,8 +50,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     init_bluetooth_communication(&socket).await;
-    
-    loop {        
+    let mut last_command_sent = false;
+    loop {
+        if last_command_sent {
+            send_response(WRITE_COMMANDS[4], &socket, true).await;
+            last_command_sent = false;
+        }
         println!("---- Listening ----");
         let read_buffer = Buffer::Create(1024).unwrap();
         let input_buffer = socket.InputStream().unwrap().ReadAsync(&read_buffer, 32, InputStreamOptions::Partial).unwrap().await.unwrap();
@@ -78,6 +83,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     0 => {
                         send_response(&read_result, &socket, true).await;
+                    }
+                    6 => {
+                        last_command_sent = true;
                     }
                     // default response
                     _ => {

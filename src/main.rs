@@ -77,7 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         send_response("OK", &socket, false).await;
                     }
                     0 => {
-                        send_response(&read_result, &socket, false).await;
+                        send_response(&read_result, &socket, true).await;
                     }
                     // default response
                     _ => {

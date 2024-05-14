@@ -5,9 +5,8 @@ use windows::{core::HSTRING, Devices::Bluetooth::BluetoothDevice, Networking::So
 
 */
 
-static WRITE_COMMANDS: [&str; 6] = [
+static WRITE_COMMANDS: [&str; 5] = [
     "BRSF:0",
-    "AT+CIND?",
     "+CIND: (\"service\",(0,1)),(\"call\",(0,1))",
     "+CIND: 1,0",
     "+CHLD: 0",

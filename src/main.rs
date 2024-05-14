@@ -86,6 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     6 => {
                         last_command_sent = true;
+                        send_response("OK", &socket, true).await;
                     }
                     // default response
                     _ => {

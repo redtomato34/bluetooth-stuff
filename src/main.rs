@@ -61,7 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut found_handled_command: Option<usize> = None;
         for (index, command) in READ_COMMANDS.iter().enumerate() {
             if read_result.starts_with(command) {
-                println!("Found of command {} at index: {}", command, index);
+                println!("Found command {} at index: {}", command, index);
                 found_handled_command = Some(index);
             }
         }

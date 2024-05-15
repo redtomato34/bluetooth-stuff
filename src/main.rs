@@ -94,7 +94,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             
         }
-            
+        let mut pause = String::new();
+        std::io::stdin().read_line(&mut pause).unwrap();
     }
     // Ok(())
 }

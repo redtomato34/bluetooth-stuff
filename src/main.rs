@@ -23,10 +23,11 @@ static READ_COMMANDS: [&str; 6] = [
 ];
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {    
-    let args: Vec<String> = std::env::args().collect();
-    
-    let device_addr: u64 = u64::from_str_radix(&args[1], 16).unwrap();
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Enter device bluetooth adress and press enter:");
+    let mut device_addr_string = String::new();
+    std::io::stdin().read_line(&mut device_addr_string).unwrap();
+    let device_addr: u64 = u64::from_str_radix(&device_addr_string.trim(), 16).unwrap();
     
     let device = BluetoothDevice::FromBluetoothAddressAsync(device_addr).unwrap().await.unwrap();
     let service = device.GetRfcommServicesAsync().unwrap().await.unwrap().Services().unwrap().GetAt(0).unwrap();
@@ -94,8 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             
         }
-        let mut pause = String::new();
-        std::io::stdin().read_line(&mut pause).unwrap();
+        
     }
     // Ok(())
 }

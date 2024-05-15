@@ -24,18 +24,25 @@ static READ_COMMANDS: [&str; 6] = [
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Enter device bluetooth adress and press enter:");
+    println!("Enter device bluetooth address and press enter:");
     let mut device_addr_string = String::new();
     std::io::stdin().read_line(&mut device_addr_string).unwrap();
     let device_addr: u64 = u64::from_str_radix(&device_addr_string.trim(), 16).unwrap();
     
     let device = BluetoothDevice::FromBluetoothAddressAsync(device_addr).unwrap().await.unwrap();
-    let service = device.GetRfcommServicesAsync().unwrap().await.unwrap().Services().unwrap().GetAt(0).unwrap();
-    
+    let services = device.GetRfcommServicesAsync().unwrap().await.unwrap().Services().unwrap();
+    for (index, service) in services.into_iter().enumerate() {
+        println!("Service at index: {} -- {}", index, service.ConnectionServiceName().unwrap())
+    }
+    println!("Type in the index of the one with 111E: ");
+    let mut device_hfp_service_select = String::new();
+    std::io::stdin().read_line(&mut device_hfp_service_select).unwrap();
+    let service_index = device_hfp_service_select.trim().parse::<u32>().unwrap();
+    let hfp_service = device.GetRfcommServicesAsync().unwrap().await.unwrap().Services().unwrap().GetAt(service_index).unwrap();
     let socket = StreamSocket::new().unwrap();
     socket.Control().unwrap().NoDelay().unwrap(); // test KeepAlive
 
-    let result = socket.ConnectAsync(&service.ConnectionHostName().unwrap(), &service.ConnectionServiceName().unwrap());
+    let result = socket.ConnectAsync(&hfp_service.ConnectionHostName().unwrap(), &hfp_service.ConnectionServiceName().unwrap());
     
     match result {
         Ok(action) => {

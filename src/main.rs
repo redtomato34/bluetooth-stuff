@@ -1,4 +1,4 @@
-use windows::{core::HSTRING, Devices::{self, Bluetooth::{BluetoothConnectionStatus, BluetoothDevice, Rfcomm::{RfcommDeviceService, RfcommServiceId}}, Enumeration::DeviceInformation}, Networking::Sockets::StreamSocket, Storage::Streams::{Buffer, DataReader, DataWriter, IBuffer, InputStreamOptions}};
+use windows::{core::HSTRING, Devices::{Bluetooth::{BluetoothDevice, Rfcomm::RfcommDeviceService}, Enumeration::DeviceInformation}, Networking::Sockets::StreamSocket, Storage::Streams::{Buffer, DataReader, DataWriter, IBuffer, InputStreamOptions}};
 
 /*
     https://inthehand.com/2022/12/30/12-days-of-bluetooth-10-hands-free/

@@ -1,3 +1,4 @@
+use chrono::{Local, Timelike};
 use windows::{core::HSTRING, Devices::{Bluetooth::{BluetoothDevice, Rfcomm::RfcommDeviceService}, Enumeration::DeviceInformation}, Networking::Sockets::StreamSocket, Storage::Streams::{Buffer, DataReader, DataWriter, IBuffer, InputStreamOptions}};
 
 /*
@@ -102,10 +103,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 match index {
                                     // battery info
                                     5 => {
+                                        let timestamp = Local::now().time();
                                         // println!("Should be battery info");
-                                        println!("*****");
+                                        println!("{:?}", timestamp);
                                         println!("Battery percent: {}%", convert_to_battery_percentage(&read_result));
-                                        println!("*****");
+
                                         send_response("OK", &socket, false).await;
                                         // socket.Close().unwrap();
                                     }

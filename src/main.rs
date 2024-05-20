@@ -31,6 +31,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for device in devices {
         let device_id = device.Id().unwrap();
         let bt_device = BluetoothDevice::FromIdAsync(&device_id).unwrap().await.unwrap();
+        let status = bt_device.ConnectionStatus().unwrap().0;
+        if status == 0 {
+            continue;
+        }
         let services = bt_device.GetRfcommServicesAsync().unwrap().await.unwrap().Services().unwrap();
         for service in services {
             let stuff = service.ConnectionServiceName().unwrap();
@@ -44,13 +48,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("No bluetooth devices found");
         return Ok(());
     }
-    
     let socket = StreamSocket::new().unwrap();
     
-    // socket.Control().unwrap().SetKeepAlive(true).unwrap(); // test KeepAlive
     let hfp_device: RfcommDeviceService = devices_with_hfp_service.get(0).unwrap().clone().unwrap();
     let result = socket.ConnectAsync(&hfp_device.ConnectionHostName().unwrap(), &hfp_device.ConnectionServiceName().unwrap());
-    // StreamSocket::GetEndpointPairsAsync(remotehostname, remoteservicename)
+    
     match result {
         Ok(action) => {
             action.await.unwrap();
@@ -66,17 +68,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     init_bluetooth_communication(&socket).await;
     let mut last_command_sent = false;
+    // println!("---- Listening ----");
     loop {
         if last_command_sent {
             send_response(WRITE_COMMANDS[4], &socket, true).await;
             socket.Close().unwrap();
             last_command_sent = false;
         }
-        println!("---- Listening ----");
         let read_buffer = Buffer::Create(1024).unwrap();
         let input_buffer = socket.InputStream();
        
-        
         
         match input_buffer {
             Ok(stream) => {
@@ -87,11 +88,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Ok(e)=> {
                         let read_result = read_input_buffer(e.await.unwrap()); 
                     
-                        println!("Response: {}", read_result);
+                        // println!("Response: {}", read_result);
                         
                         for (index, command) in READ_COMMANDS.iter().enumerate() {
                             if read_result.starts_with(command) {
-                                println!("Found command {} at index: {}", command, index);
+                                // println!("Found command {} at index: {}", command, index);
                                 found_handled_command = Some(index);
                             }
                         }
@@ -101,12 +102,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 match index {
                                     // battery info
                                     5 => {
-                                        println!("Should be battery info");
+                                        // println!("Should be battery info");
                                         println!("*****");
                                         println!("Battery percent: {}%", convert_to_battery_percentage(&read_result));
                                         println!("*****");
                                         send_response("OK", &socket, false).await;
-                                        socket.Close().unwrap();
+                                        // socket.Close().unwrap();
                                     }
                                     0 => {
                                         send_response(&read_result, &socket, true).await;
@@ -140,7 +141,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn init_bluetooth_communication(socket: &StreamSocket) {
     let start_cmd = HSTRING::from("AT+CIND?");
     let writer = DataWriter::new().unwrap();
-    println!("Sending starting command: {}", &start_cmd);
+    // println!("Sending starting command: {}", &start_cmd);
     
     writer.WriteString(&start_cmd).unwrap();
     let write_buffer = writer.DetachBuffer().unwrap();
@@ -148,7 +149,7 @@ async fn init_bluetooth_communication(socket: &StreamSocket) {
 }
 
 async fn send_response(res: &str, socket: &StreamSocket, send_extra_ok: bool) {
-    println!("- Writing: {}", res);
+    // println!("- Writing: {}", res);
     let cmd_write_buffer = create_write_command_buffer(res);
     socket.OutputStream().unwrap().WriteAsync(&cmd_write_buffer).unwrap().await.unwrap();
     if send_extra_ok {
@@ -181,7 +182,7 @@ fn convert_to_battery_percentage(res: &str) -> String {
         let value = bat_data[(index * 2 + 2) as usize].trim().parse::<u8>().unwrap();
         
         if key == 1 {
-            println!("Converted");
+            // println!("Converted");
             result = (value + 1) * 10;
             break;
         }

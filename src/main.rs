@@ -2,7 +2,7 @@ use chrono::Local;
 use windows::{core::HSTRING, Devices::{Bluetooth::{BluetoothDevice, Rfcomm::RfcommDeviceService}, Enumeration::DeviceInformation}, Networking::Sockets::StreamSocket, Storage::Streams::{Buffer, DataReader, DataWriter, IBuffer, InputStreamOptions}};
 
 static WRITE_COMMANDS: [&str; 5] = [
-    "BRSF:3",
+    "BRSF:7",
     "+CIND: (\"service\",(0,1)),(\"call\",(0,1))",
     "+CIND: 1,0",
     "+CHLD: 0",
@@ -71,14 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     
     init_bluetooth_communication(&socket).await;
-    let mut last_command_sent = false;
-    // println!("---- Listening ----");
     loop {
-        if last_command_sent {
-            send_response(WRITE_COMMANDS[4], &socket, true).await;
-            socket.Close().unwrap();
-            last_command_sent = false;
-        }
         let read_buffer = Buffer::Create(1024).unwrap();
         let input_buffer = socket.InputStream();
        
@@ -154,8 +147,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn init_bluetooth_communication(socket: &StreamSocket) {
     let start_cmd = HSTRING::from("AT+CIND?");
     let writer = DataWriter::new().unwrap();
-    // println!("Sending starting command: {}", &start_cmd);
-    
     writer.WriteString(&start_cmd).unwrap();
     let write_buffer = writer.DetachBuffer().unwrap();
     socket.OutputStream().unwrap().WriteAsync(&write_buffer).unwrap().await.unwrap();
@@ -201,12 +192,4 @@ fn convert_to_battery_percentage(res: &str) -> String {
         }
     }
     result.to_string()
-}
-
-
-#[cfg(test)]
-mod tests {
-    // sending only OK until AT+IPHONEACCEV
-    // sending +XAPL=iPhone,2 first
-    // after OKing/responding, read in a loop until +CIEV or fail
 }

@@ -1,11 +1,6 @@
 use chrono::Local;
 use windows::{core::HSTRING, Devices::{Bluetooth::{BluetoothDevice, Rfcomm::RfcommDeviceService}, Enumeration::DeviceInformation}, Networking::Sockets::StreamSocket, Storage::Streams::{Buffer, DataReader, DataWriter, IBuffer, InputStreamOptions}};
 
-/*
-    https://inthehand.com/2022/12/30/12-days-of-bluetooth-10-hands-free/
-
-*/
-
 static WRITE_COMMANDS: [&str; 5] = [
     "BRSF:0",
     "+CIND: (\"service\",(0,1)),(\"call\",(0,1))",
@@ -28,21 +23,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bt_device_aqs_filter = BluetoothDevice::GetDeviceSelector().unwrap();
     let devices = DeviceInformation::FindAllAsyncAqsFilter(&bt_device_aqs_filter).unwrap().await.unwrap();
     let mut devices_with_hfp_service: Vec<Option<RfcommDeviceService>> = Vec::new();
-    
+
     for device in devices {
         let device_id = device.Id().unwrap();
-        let bt_device = BluetoothDevice::FromIdAsync(&device_id).unwrap().await.unwrap();
-        let status = bt_device.ConnectionStatus().unwrap().0;
-        if status == 0 {
-            continue;
-        }
-        let services = bt_device.GetRfcommServicesAsync().unwrap().await.unwrap().Services().unwrap();
-        for service in services {
-            let stuff = service.ConnectionServiceName().unwrap();
-            if stuff.to_string().contains("111e") {
-                devices_with_hfp_service.push(Some(service));
+        let bt_device = BluetoothDevice::FromIdAsync(&device_id).unwrap().await;
+        match bt_device {
+            Ok(e) => {
+                let status = e.ConnectionStatus().unwrap().0;
+                if status == 0 {
+                    continue;
+                }
+                let services = e.GetRfcommServicesAsync().unwrap().await.unwrap().Services().unwrap();
+                for service in services {
+                    let stuff = service.ConnectionServiceName().unwrap();
+                    if stuff.to_string().contains("111e") {
+                        devices_with_hfp_service.push(Some(service));
+                    }
+                }
+            }
+            Err(_) => {
+                println!("Bluetooth is off");
+                return Ok(());
             }
         }
+        
     }
     
     if devices_with_hfp_service.is_empty() {
@@ -58,7 +62,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(action) => {
             action.await.unwrap();
             println!("Connected");
-            
         }
         Err(e) => {
             println!("oopsies");
@@ -89,12 +92,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Ok(e)=> {
                         let read_result = read_input_buffer(e.await.unwrap()); 
                     
-                        // println!("Response: {}", read_result);
+                        println!("Reading: {}", read_result);
                         
                         for (index, command) in READ_COMMANDS.iter().enumerate() {
                             if read_result.starts_with(command) {
                                 // println!("Found command {} at index: {}", command, index);
                                 found_handled_command = Some(index);
+                                break;
+                            } else if read_result.is_empty() {
+                                println!("Empty");
+                                found_handled_command = Some(6);
+                                break;
                             }
                         }
                         
@@ -111,9 +119,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                         send_response("OK", &socket, false).await;
                                         // socket.Close().unwrap();
                                     }
-                                    0 => {
-                                        send_response(&read_result, &socket, true).await;
+                                    6 => {
+                                        return Ok(());
                                     }
+                                    // 0 => {
+                                    //     send_response(&read_result, &socket, true).await;
+                                    // }
                                     // default response
                                     _ => {
                                         send_response(WRITE_COMMANDS[index], &socket, true).await;
@@ -151,7 +162,7 @@ async fn init_bluetooth_communication(socket: &StreamSocket) {
 }
 
 async fn send_response(res: &str, socket: &StreamSocket, send_extra_ok: bool) {
-    // println!("- Writing: {}", res);
+    println!("- Writing: {}", res);
     let cmd_write_buffer = create_write_command_buffer(res);
     socket.OutputStream().unwrap().WriteAsync(&cmd_write_buffer).unwrap().await.unwrap();
     if send_extra_ok {

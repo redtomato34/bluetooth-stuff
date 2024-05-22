@@ -2,7 +2,7 @@ use chrono::Local;
 use windows::{core::HSTRING, Devices::{Bluetooth::{BluetoothDevice, Rfcomm::RfcommDeviceService}, Enumeration::DeviceInformation}, Networking::Sockets::StreamSocket, Storage::Streams::{Buffer, DataReader, DataWriter, IBuffer, InputStreamOptions}};
 
 static WRITE_COMMANDS: [&str; 5] = [
-    "BRSF:7",
+    "BRSF:15",
     "+CIND: (\"service\",(0,1)),(\"call\",(0,1))",
     "+CIND: 1,0",
     "+CHLD: 0",

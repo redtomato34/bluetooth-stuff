@@ -22,36 +22,16 @@ mod bluetooth;
 
 use std::sync::Arc;
 
-use bluetooth::run_bluetooth_thread;
+use bluetooth::{run_bluetooth_thread, BluetoothInfo};
 use futures::lock::Mutex;
 use render::run_render_thread;
-use tao::window::Icon;
-use util::BluetoothInfo;
-
-/*
-    BluetoothInfo:
-        adapter_is_on: bool
-        connected_devices: Option<Vec<DeviceInfo>>
-
-    DeviceInfo:
-        device_id: String
-        device_name: String
-        device_type: DeviceType
-        battery_level: Option<u8> 
-        battery_icon: Option<Icon>
-        checked_timestamp: u32
-        is_ble: bool
-    
-    DeviceType:
-        0 Headset
-*/
 
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut bluetooth_info = BluetoothInfo {
         adapter_is_on: Arc::new(Mutex::new(false)),
-        connected_devices: Arc::new(Mutex::new(None)),
+        connected_device: Arc::new(Mutex::new(None)),
         message: Arc::new(Mutex::new(None))
     };
     let mut display_info = share_bluetooth_info(&bluetooth_info);
@@ -70,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn share_bluetooth_info(info: &BluetoothInfo) -> BluetoothInfo {
     BluetoothInfo {
         adapter_is_on: info.adapter_is_on.clone(),
-        connected_devices: info.connected_devices.clone(),
+        connected_device: info.connected_device.clone(),
         message: info.message.clone()
     }
 }

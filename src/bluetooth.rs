@@ -106,7 +106,18 @@ async fn run_bluetooth(info: BluetoothInfo) {
     
     match result {
         Ok(action) => {
-            action.await.unwrap();
+            match action.await {
+                Ok(e) => {
+
+                }
+                Err(e) => {
+                    {
+                        let mut guard = info.connected_device.lock().await;
+                        *guard = None;
+                    }
+                    println!("Oops")
+                }
+            };
             // println!("Connected");
         }
         Err(e) => {

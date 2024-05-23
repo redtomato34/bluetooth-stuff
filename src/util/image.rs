@@ -1,11 +1,12 @@
-use std::fs;
+use std::{fs, path::Path};
 
 use tray_icon::Icon;
+const ICON_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "\\icons\\");
 
-
-pub fn load_icons(path: &std::path::Path) -> Option<Vec<Icon>> {
+pub fn load_icons() -> Option<Vec<Icon>> {
     let mut battery_icons: Vec<Icon> = Vec::new();
-    let icon_paths = fs::read_dir(path).unwrap();
+    let file_path = Path::new(ICON_PATH);
+    let icon_paths = fs::read_dir(file_path).unwrap();
     
     for icon in icon_paths {
         let (icon_name, icon_rgba, icon_width, icon_height) = {

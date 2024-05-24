@@ -107,10 +107,10 @@ async fn run_bluetooth(info: BluetoothInfo) {
     match result {
         Ok(action) => {
             match action.await {
-                Ok(e) => {
-
+                Ok(_) => {
+                    init_bluetooth_communication(&socket).await;
                 }
-                Err(e) => {
+                Err(_) => {
                     {
                         let mut guard = info.connected_device.lock().await;
                         *guard = None;
@@ -126,7 +126,7 @@ async fn run_bluetooth(info: BluetoothInfo) {
             return;
         }
     }
-    init_bluetooth_communication(&socket).await;
+    
 
     loop {
         let read_buffer = Buffer::Create(1024).unwrap();
@@ -195,6 +195,10 @@ async fn run_bluetooth(info: BluetoothInfo) {
                     }
             }
             Err(e) => {
+                {
+                    let mut guard = info.connected_device.lock().await;
+                    *guard = None;
+                }
                 println!("{}", e);
                 break;
             }

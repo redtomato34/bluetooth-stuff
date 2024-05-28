@@ -33,7 +33,6 @@ pub async fn  run_render_thread(info: BluetoothInfo) {
         
         if let tao::event::Event::NewEvents(tao::event::StartCause::Init) = event {
             *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_secs(2));
-            
         }
         match event {
             Event::NewEvents(StartCause::Init) => {

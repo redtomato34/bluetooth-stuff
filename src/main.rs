@@ -25,6 +25,7 @@ use std::sync::Arc;
 use bluetooth::{run_bluetooth_thread, BluetoothInfo};
 use futures::lock::Mutex;
 use render::run_render_thread;
+use util::share_bluetooth_info;
 
 
 #[tokio::main]
@@ -42,11 +43,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bluetooth_thread_handle = run_bluetooth_thread(update_info).await;
     run_render_thread(display_info).await;
     bluetooth_thread_handle.abort();
-    // should never execute this
+    // should never execute this unless user pressed quit in tray menu
     Ok(())
-}
-fn share_bluetooth_info(info: &BluetoothInfo) -> BluetoothInfo {
-    BluetoothInfo {
-        connected_device: info.connected_device.clone(),
-    }
 }

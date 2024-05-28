@@ -5,6 +5,8 @@ use std::{fs, path::Path};
 
 use tray_icon::Icon;
 
+use crate::bluetooth::BluetoothInfo;
+
 const ICON_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "\\icons\\");
 
 
@@ -46,4 +48,10 @@ pub fn load_icons() -> Option<Vec<Icon>> {
         battery_icons.push(create_icon);
     }
     Some(battery_icons)
+}
+
+pub fn share_bluetooth_info(info: &BluetoothInfo) -> BluetoothInfo {
+    BluetoothInfo {
+        connected_device: info.connected_device.clone(),
+    }
 }

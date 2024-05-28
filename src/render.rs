@@ -1,11 +1,11 @@
 use std::time::{Duration, Instant};
 
-use chrono::{DateTime, Local, TimeZone, Utc};
+use chrono::{DateTime, Local};
 use futures::executor::block_on;
 use tao::{event::{Event, StartCause}, event_loop::{ControlFlow, EventLoopBuilder}};
-use tray_icon::{menu::{Menu, MenuEvent, MenuItem}, Icon, TrayIconBuilder, TrayIconEvent};
+use tray_icon::{menu::{Menu, MenuEvent, MenuItem}, Icon, TrayIconBuilder};
 
-use crate::{bluetooth::DeviceInfo, util::load_icons, BluetoothInfo};
+use crate::{util::load_icons, BluetoothInfo};
 
 const SHORT_TIMER: Duration = Duration::from_secs(2);
 
@@ -99,7 +99,7 @@ pub async fn  run_render_thread(info: BluetoothInfo) {
                             device_icon = Some(tray_battery_icons.as_ref().unwrap().get(5).unwrap().clone());
                         }
                     }
-                    println!("Updating tooltip: {:?}", device_tooltip);
+                    // println!("Updating tooltip: {:?}", device_tooltip);
                     tray_icon_app.as_ref().unwrap().set_tooltip(device_tooltip).unwrap();
                     tray_icon_app.as_ref().unwrap().set_icon(device_icon).unwrap();
                 }

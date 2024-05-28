@@ -29,16 +29,14 @@ use render::run_render_thread;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut bluetooth_info = BluetoothInfo {
-        adapter_is_on: Arc::new(Mutex::new(false)),
-        connected_device: Arc::new(Mutex::new(None)),
-        message: Arc::new(Mutex::new(None))
+    let bluetooth_info = BluetoothInfo {
+        connected_device: Arc::new(Mutex::new(None))
     };
-    let mut display_info = share_bluetooth_info(&bluetooth_info);
-    let mut update_info = share_bluetooth_info(&bluetooth_info);
+    let display_info = share_bluetooth_info(&bluetooth_info);
+    let update_info = share_bluetooth_info(&bluetooth_info);
     
     // run bluetooth thread
-    //   spawn new thread for each device
+    // todo: spawn new thread for each device
     // run render on main thread for tray
     // if any exit, don't crash the program
     let bluetooth_thread_handle = run_bluetooth_thread(update_info).await;
@@ -49,8 +47,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 fn share_bluetooth_info(info: &BluetoothInfo) -> BluetoothInfo {
     BluetoothInfo {
-        adapter_is_on: info.adapter_is_on.clone(),
         connected_device: info.connected_device.clone(),
-        message: info.message.clone()
     }
 }

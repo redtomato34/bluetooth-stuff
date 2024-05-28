@@ -1,5 +1,5 @@
 use std::{sync::Arc, time::Duration};
-use chrono::{Local, Utc};
+use chrono::Utc;
 use tokio::time::sleep;
 use tray_icon::Icon;
 use futures::{executor::block_on, lock::Mutex};
@@ -9,9 +9,7 @@ use crate::util::{load_icons, READ_COMMANDS, WRITE_COMMANDS};
 
 #[derive(Clone)]
 pub struct BluetoothInfo {
-    pub adapter_is_on: Arc<Mutex<bool>>,
-    pub connected_device: Arc<Mutex<Option<DeviceInfo>>>,
-    pub message: Arc<Mutex<Option<String>>>
+    pub connected_device: Arc<Mutex<Option<DeviceInfo>>>
 }
 pub struct DeviceInfo {
     pub device_name: String,
@@ -53,7 +51,6 @@ pub async fn run_bluetooth_thread(info: BluetoothInfo) -> tokio::task::JoinHandl
             block_on(run_bluetooth(bt_info.clone()));
             sleep(Duration::from_secs(5)).await;
         }
-        Ok(())
     })}
 
 
@@ -87,20 +84,16 @@ async fn run_bluetooth(info: BluetoothInfo) {
                 }
             }
             Err(_) => {
-                println!("Bluetooth is off");
+                // println!("Bluetooth is off");
                 return;
             }
         }
     }
     if devices_with_hfp_service.is_empty() {
-        println!("No bluetooth devices found");
-        return;
+        // println!("No bluetooth devices found");
+        return; 
     }
     let hfp_device: RfcommDeviceService = devices_with_hfp_service.get(0).unwrap().clone().unwrap();
-    {
-        let mut guard = info.message.lock().await;
-        *guard = Some(format!("{}", hfp_device.Device().unwrap().DeviceInformation().unwrap().Name().unwrap()))
-    }
     let socket = StreamSocket::new().unwrap();
     let result = socket.ConnectAsync(&hfp_device.ConnectionHostName().unwrap(), &hfp_device.ConnectionServiceName().unwrap());
     
@@ -115,19 +108,15 @@ async fn run_bluetooth(info: BluetoothInfo) {
                         let mut guard = info.connected_device.lock().await;
                         *guard = None;
                     }
-                    println!("Oops")
                 }
             };
-            // println!("Connected");
         }
-        Err(e) => {
-            println!("oopsies");
-            println!("{e:?}");
+        // Bluetooth device was disconnected or adapter is not on
+        Err(_) => {
             return;
         }
     }
     
-
     loop {
         let read_buffer = Buffer::Create(1024).unwrap();
         let input_buffer = socket.InputStream();
@@ -140,12 +129,9 @@ async fn run_bluetooth(info: BluetoothInfo) {
                 match buffer {
                     Ok(e)=> {
                         let read_result = read_input_buffer(e.await.unwrap()); 
-                    
-                        // println!("Reading: {}", read_result);
-                        
+                                        
                         for (index, command) in READ_COMMANDS.iter().enumerate() {
                             if read_result.starts_with(command) {
-                                // println!("Found command {} at index: {}", command, index);
                                 found_handled_command = Some(index);
                                 break;
                             } else if read_result.is_empty() {

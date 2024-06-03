@@ -99,8 +99,8 @@ pub async fn  run_render_thread(info: BluetoothInfo) {
                         }
                     }
                     // println!("Updating tooltip: {:?}", device_tooltip);
-                    tray_icon_app.as_ref().unwrap().set_tooltip(device_tooltip).unwrap();
-                    tray_icon_app.as_ref().unwrap().set_icon(device_icon).unwrap();
+                    let _ = tray_icon_app.as_ref().unwrap().set_tooltip(device_tooltip);
+                    let _ = tray_icon_app.as_ref().unwrap().set_icon(device_icon);
                 }
             }
             _ => {

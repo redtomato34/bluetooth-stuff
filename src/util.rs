@@ -1,14 +1,10 @@
-
 use std::{fs, path::Path};
-
-
 
 use tray_icon::Icon;
 
 use crate::bluetooth::BluetoothInfo;
 
 const ICON_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "\\icons\\");
-
 
 pub static WRITE_COMMANDS: [&str; 5] = [
     "BRSF:23", // m,inimum required for Cowin headphones to work
@@ -36,6 +32,7 @@ pub fn load_icons() -> Option<Vec<Icon>> {
         let (_, icon_rgba, icon_width, icon_height) = {
             let mut img = image::open(icon.as_ref().unwrap().path())
                 .expect("Failed to open icon path");
+            // todo: check for device theme preferences
             img.invert();
             let inverted_img = img.into_rgba8();
             let (width, height) = inverted_img.dimensions();

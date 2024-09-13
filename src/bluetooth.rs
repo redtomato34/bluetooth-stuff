@@ -1,11 +1,10 @@
 use std::{sync::Arc, time::Duration};
 use chrono::Utc;
 use tokio::time::sleep;
-use tray_icon::Icon;
 use futures::{executor::block_on, lock::Mutex};
 use windows::{core::HSTRING, Devices::{Bluetooth::{BluetoothDevice, Rfcomm::RfcommDeviceService}, Enumeration::DeviceInformation}, Networking::Sockets::StreamSocket, Storage::Streams::{Buffer, DataReader, DataWriter, IBuffer, InputStreamOptions}};
 
-use crate::util::{load_icons, READ_COMMANDS, WRITE_COMMANDS};
+use crate::util::{READ_COMMANDS, WRITE_COMMANDS};
 
 #[derive(Clone)]
 pub struct BluetoothInfo {
@@ -14,24 +13,22 @@ pub struct BluetoothInfo {
 pub struct DeviceInfo {
     pub device_name: String,
     pub battery_level: Option<u8> ,
-    pub battery_icon: Option<Icon>,
+    pub battery_icon_index: Option<usize>,
     pub checked_timestamp: i64, 
 }
 impl DeviceInfo {
-    pub fn init(device_name: String, battery_level: Option<u8>, battery_icon: Option<Icon>, checked_timestamp: i64) -> Self {
+    pub fn init(device_name: String, battery_level: Option<u8>, battery_icon_index: Option<usize>, checked_timestamp: i64) -> Self {
         DeviceInfo {
             device_name,
             battery_level,
-            battery_icon,
+            battery_icon_index,
             checked_timestamp
         }
     }
     pub fn set_battery(&mut self, battery_level: u8) {
-        let icons = load_icons().unwrap();
         let icon_index = (100 - battery_level) / 20;
-        let icon: &Icon = icons.get(icon_index as usize).unwrap();
         self.battery_level = Some(battery_level);
-        self.battery_icon = Some(icon.clone());
+        self.battery_icon_index = Some(icon_index.into());
     }
 }
 // todo: later

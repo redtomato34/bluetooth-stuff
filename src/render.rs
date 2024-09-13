@@ -14,7 +14,7 @@ pub async fn  run_render_thread(info: BluetoothInfo) {
     let mut cached_info = None;
     let event_loop = EventLoopBuilder::new().build();
     
-    let tray_battery_icons = load_icons();
+    let tray_battery_icons = load_icons().unwrap();
     let tray_menu = Menu::new();
     
     let quit_i = MenuItem::new("Quit", true, None);
@@ -38,7 +38,7 @@ pub async fn  run_render_thread(info: BluetoothInfo) {
             Event::NewEvents(StartCause::Init) => {
                 *control_flow = ControlFlow::WaitUntil(Instant::now() + SHORT_TIMER);
                 
-                let default_icon = tray_battery_icons.as_ref().expect("yep").get(5).unwrap();
+                let default_icon = tray_battery_icons.get(5).unwrap();
                
                 
                 tray_icon_app = Some(
@@ -87,15 +87,15 @@ pub async fn  run_render_thread(info: BluetoothInfo) {
                             } else {
                                 format!("NA")
                             };
-                            icon = e.battery_icon.clone();
+                            icon = tray_battery_icons.get(e.battery_icon_index.unwrap());
                             let formatted_tooltip = format!("{device_name} {battery_format} \nLast checked {last_checked_formatted}");
                             device_tooltip = Some(formatted_tooltip);
-                            device_icon = icon;
+                            device_icon = icon.cloned();
                         }
                         None => {
                             cached_info = None;
                             device_tooltip = Some("No device found or bluetooth is off".to_string());
-                            device_icon = Some(tray_battery_icons.as_ref().unwrap().get(5).unwrap().clone());
+                            device_icon = Some(tray_battery_icons.get(5).unwrap().clone());
                         }
                     }
                     // println!("Updating tooltip: {:?}", device_tooltip);

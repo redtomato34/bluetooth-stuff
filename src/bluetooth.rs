@@ -1,37 +1,47 @@
-use std::{sync::Arc, time::Duration};
 use chrono::Utc;
-use tokio::time::sleep;
-use tray_icon::Icon;
 use futures::{executor::block_on, lock::Mutex};
-use windows::{core::HSTRING, Devices::{Bluetooth::{BluetoothDevice, Rfcomm::RfcommDeviceService}, Enumeration::DeviceInformation}, Networking::Sockets::StreamSocket, Storage::Streams::{Buffer, DataReader, DataWriter, IBuffer, InputStreamOptions}};
+use std::{sync::Arc, time::Duration};
+use tokio::time::sleep;
+use windows::{
+    core::HSTRING,
+    Devices::{
+        Bluetooth::{BluetoothDevice, Rfcomm::RfcommDeviceService},
+        Enumeration::DeviceInformation,
+    },
+    Networking::Sockets::StreamSocket,
+    Storage::Streams::{Buffer, DataReader, DataWriter, IBuffer, InputStreamOptions},
+};
 
-use crate::util::{load_icons, READ_COMMANDS, WRITE_COMMANDS};
+use crate::util::{READ_COMMANDS, WRITE_COMMANDS};
 
 #[derive(Clone)]
 pub struct BluetoothInfo {
-    pub connected_device: Arc<Mutex<Option<DeviceInfo>>>
+    pub connected_device: Arc<Mutex<Option<DeviceInfo>>>,
 }
 pub struct DeviceInfo {
     pub device_name: String,
-    pub battery_level: Option<u8> ,
-    pub battery_icon: Option<Icon>,
-    pub checked_timestamp: i64, 
+    pub battery_level: Option<u8>,
+    pub battery_icon_index: Option<usize>,
+    pub checked_timestamp: i64,
 }
 impl DeviceInfo {
-    pub fn init(device_name: String, battery_level: Option<u8>, battery_icon: Option<Icon>, checked_timestamp: i64) -> Self {
+    pub fn init(
+        device_name: String,
+        battery_level: Option<u8>,
+        battery_icon_index: Option<usize>,
+        checked_timestamp: i64,
+    ) -> Self {
         DeviceInfo {
             device_name,
             battery_level,
-            battery_icon,
-            checked_timestamp
+            battery_icon_index,
+            checked_timestamp,
         }
     }
     pub fn set_battery(&mut self, battery_level: u8) {
-        let icons = load_icons().unwrap();
         let icon_index = (100 - battery_level) / 20;
-        let icon: &Icon = icons.get(icon_index as usize).unwrap();
         self.battery_level = Some(battery_level);
-        self.battery_icon = Some(icon.clone());
+        self.battery_icon_index = Some(icon_index.into());
     }
 }
 // todo: later
@@ -44,19 +54,23 @@ impl DeviceInfo {
 //     }
 // }
 
-pub async fn run_bluetooth_thread(info: BluetoothInfo) -> tokio::task::JoinHandle<Result<(), ()>> {
-    tokio::spawn( async move {
+pub async fn init_bluetooth_thread(info: BluetoothInfo) -> tokio::task::JoinHandle<Result<(), ()>> {
+    // todo: figure out better implemnetation for device disconnection/not found
+    tokio::spawn(async move {
         loop {
             let bt_info = &info;
             block_on(run_bluetooth(bt_info.clone()));
             sleep(Duration::from_secs(5)).await;
         }
-    })}
-
+    })
+}
 
 async fn run_bluetooth(info: BluetoothInfo) {
     let bt_device_aqs_filter = BluetoothDevice::GetDeviceSelector().unwrap();
-    let devices = DeviceInformation::FindAllAsyncAqsFilter(&bt_device_aqs_filter).unwrap().await.unwrap();
+    let devices = DeviceInformation::FindAllAsyncAqsFilter(&bt_device_aqs_filter)
+        .unwrap()
+        .await
+        .unwrap();
     let mut devices_with_hfp_service: Vec<Option<RfcommDeviceService>> = Vec::new();
 
     for device in devices {
@@ -69,15 +83,26 @@ async fn run_bluetooth(info: BluetoothInfo) {
                 if status == 0 {
                     continue;
                 }
-                let services = e.GetRfcommServicesAsync().unwrap().await.unwrap().Services().unwrap();
+                let services = e
+                    .GetRfcommServicesAsync()
+                    .unwrap()
+                    .await
+                    .unwrap()
+                    .Services()
+                    .unwrap();
                 for service in services {
-                    let stuff = service.ConnectionServiceName().unwrap();
-                    if stuff.to_string().contains("111e") {
+                    let service_info = service.ConnectionServiceName().unwrap();
+                    if service_info.to_string().contains("111e") {
                         devices_with_hfp_service.push(Some(service));
                         {
                             let mut guard = info.connected_device.lock().await;
                             *guard = None;
-                            let device_info = DeviceInfo::init(e.DeviceInformation().unwrap().Name().unwrap().to_string(), None, None, Utc::now().timestamp().try_into().unwrap());
+                            let device_info = DeviceInfo::init(
+                                e.DeviceInformation().unwrap().Name().unwrap().to_string(),
+                                None,
+                                None,
+                                Utc::now().timestamp().try_into().unwrap(),
+                            );
                             *guard = Some(device_info);
                         }
                     }
@@ -91,12 +116,16 @@ async fn run_bluetooth(info: BluetoothInfo) {
     }
     if devices_with_hfp_service.is_empty() {
         // println!("No bluetooth devices found");
-        return; 
+        return;
     }
+    // todo: spawn bt communication thread for each device
     let hfp_device: RfcommDeviceService = devices_with_hfp_service.get(0).unwrap().clone().unwrap();
     let socket = StreamSocket::new().unwrap();
-    let result = socket.ConnectAsync(&hfp_device.ConnectionHostName().unwrap(), &hfp_device.ConnectionServiceName().unwrap());
-    
+    let result = socket.ConnectAsync(
+        &hfp_device.ConnectionHostName().unwrap(),
+        &hfp_device.ConnectionServiceName().unwrap(),
+    );
+
     match result {
         Ok(action) => {
             match action.await {
@@ -104,10 +133,8 @@ async fn run_bluetooth(info: BluetoothInfo) {
                     init_bluetooth_communication(&socket).await;
                 }
                 Err(_) => {
-                    {
-                        let mut guard = info.connected_device.lock().await;
-                        *guard = None;
-                    }
+                    let mut guard = info.connected_device.lock().await;
+                    *guard = None;
                 }
             };
         }
@@ -116,20 +143,20 @@ async fn run_bluetooth(info: BluetoothInfo) {
             return;
         }
     }
-    
+
     loop {
         let read_buffer = Buffer::Create(1024).unwrap();
         let input_buffer = socket.InputStream();
 
         match input_buffer {
             Ok(stream) => {
-                let mut found_handled_command: Option<usize> = None;                                    
-                
+                let mut found_handled_command: Option<usize> = None;
+
                 let buffer = stream.ReadAsync(&read_buffer, 32, InputStreamOptions::Partial);
                 match buffer {
-                    Ok(e)=> {
-                        let read_result = read_input_buffer(e.await.unwrap()); 
-                                        
+                    Ok(e) => {
+                        let read_result = read_input_buffer(e.await.unwrap());
+
                         for (index, command) in READ_COMMANDS.iter().enumerate() {
                             if read_result.starts_with(command) {
                                 found_handled_command = Some(index);
@@ -140,7 +167,7 @@ async fn run_bluetooth(info: BluetoothInfo) {
                                 break;
                             }
                         }
-                        
+
                         match found_handled_command {
                             Some(index) => {
                                 match index {
@@ -150,8 +177,11 @@ async fn run_bluetooth(info: BluetoothInfo) {
                                         {
                                             let timestamp = Utc::now();
                                             let mut guard = info.connected_device.lock().await;
-                                            guard.as_mut().unwrap().checked_timestamp = timestamp.timestamp();
-                                            guard.as_mut().unwrap().set_battery(convert_to_battery_percentage(&read_result));
+                                            guard.as_mut().unwrap().checked_timestamp =
+                                                timestamp.timestamp();
+                                            guard.as_mut().unwrap().set_battery(
+                                                convert_to_battery_percentage(&read_result),
+                                            );
                                         }
                                     }
                                     // device disconnected
@@ -165,7 +195,7 @@ async fn run_bluetooth(info: BluetoothInfo) {
                                     // default handled response
                                     _ => {
                                         send_response(WRITE_COMMANDS[index], &socket, true).await;
-                                    }   
+                                    }
                                 }
                             }
                             // unhandled response
@@ -178,7 +208,7 @@ async fn run_bluetooth(info: BluetoothInfo) {
                         println!("{}", e);
                         break;
                     }
-                    }
+                }
             }
             Err(e) => {
                 {
@@ -190,7 +220,7 @@ async fn run_bluetooth(info: BluetoothInfo) {
             }
         }
     }
-    println!("Done");
+    // println!("Done");
 }
 
 async fn init_bluetooth_communication(socket: &StreamSocket) {
@@ -198,15 +228,33 @@ async fn init_bluetooth_communication(socket: &StreamSocket) {
     let writer = DataWriter::new().unwrap();
     writer.WriteString(&start_cmd).unwrap();
     let write_buffer = writer.DetachBuffer().unwrap();
-    socket.OutputStream().unwrap().WriteAsync(&write_buffer).unwrap().await.unwrap();
+    socket
+        .OutputStream()
+        .unwrap()
+        .WriteAsync(&write_buffer)
+        .unwrap()
+        .await
+        .unwrap();
 }
 
 async fn send_response(res: &str, socket: &StreamSocket, send_extra_ok: bool) {
     let cmd_write_buffer = create_write_command_buffer(res);
-    socket.OutputStream().unwrap().WriteAsync(&cmd_write_buffer).unwrap().await.unwrap();
+    socket
+        .OutputStream()
+        .unwrap()
+        .WriteAsync(&cmd_write_buffer)
+        .unwrap()
+        .await
+        .unwrap();
     if send_extra_ok {
         let ok_response_buffer = create_write_command_buffer("OK");
-        socket.OutputStream().unwrap().WriteAsync(&ok_response_buffer).unwrap().await.unwrap();
+        socket
+            .OutputStream()
+            .unwrap()
+            .WriteAsync(&ok_response_buffer)
+            .unwrap()
+            .await
+            .unwrap();
     }
 }
 
@@ -219,9 +267,10 @@ fn create_write_command_buffer(cmd: &str) -> IBuffer {
 }
 fn read_input_buffer(buffer: IBuffer) -> String {
     let reader = DataReader::FromBuffer(&buffer).unwrap();
-    let stuff = reader.ReadString(reader.UnconsumedBufferLength().unwrap()).unwrap();
-    
-    stuff.to_string()
+    let input = reader
+        .ReadString(reader.UnconsumedBufferLength().unwrap())
+        .unwrap();
+    input.to_string()
 }
 fn convert_to_battery_percentage(res: &str) -> u8 {
     let mut result: u8 = 0;
@@ -230,9 +279,15 @@ fn convert_to_battery_percentage(res: &str) -> u8 {
     let bat_data: Vec<&str> = res_split.get(1).unwrap().split(",").collect();
     for index in 0..(bat_data[0].parse::<u8>().unwrap()) {
         let index = index as u8;
-        let key = bat_data[(index * 2 + 1) as usize].trim().parse::<u8>().unwrap();
-        let value = bat_data[(index * 2 + 2) as usize].trim().parse::<u8>().unwrap();
-        
+        let key = bat_data[(index * 2 + 1) as usize]
+            .trim()
+            .parse::<u8>()
+            .unwrap();
+        let value = bat_data[(index * 2 + 2) as usize]
+            .trim()
+            .parse::<u8>()
+            .unwrap();
+
         if key == 1 {
             result = (value + 1) * 10;
             break;

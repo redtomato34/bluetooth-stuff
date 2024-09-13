@@ -74,7 +74,11 @@ pub async fn run_render_thread(info: BluetoothInfo) {
                             } else {
                                 format!("NA")
                             };
-                            let icon = tray_battery_icons.get(device_info.battery_icon_index.unwrap());
+                            let icon = if device_info.battery_icon_index.is_some() {
+                                tray_battery_icons.get(device_info.battery_icon_index.unwrap())
+                            } else {
+                                tray_battery_icons.get(5)
+                            };
                             let formatted_tooltip = format!("{device_name} {battery_format} \nLast checked {last_checked_formatted}");
                             device_tooltip = Some(formatted_tooltip);
                             device_icon = icon.cloned();
@@ -86,8 +90,14 @@ pub async fn run_render_thread(info: BluetoothInfo) {
                         }
                     }
                     // println!("Updating tooltip: {:?}", device_tooltip);
-                    let _ = tray_icon_app.as_ref().unwrap().set_tooltip(device_tooltip);
-                    let _ = tray_icon_app.as_ref().unwrap().set_icon(device_icon);
+                    match tray_icon_app.as_ref() {
+                        Some(app) => {
+                            let _ = app.set_tooltip(device_tooltip);
+                            let _ = app.set_icon(device_icon);
+                        }
+                        None => {
+                        }
+                    }
                 }
             }
             _ => {}
